@@ -1,0 +1,102 @@
+name: Copilot Agent Demo - Auto Branch & PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch_suffix:
+        description: '新分支后缀（默认使用时间戳）'
+        required: false
+        default: ''
+      pr_title:
+        description: 'Pull Request 标题'
+        required: false
+        default: 'chore: Copilot agent 自动提交示例'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-branch-and-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine branch name
+        id: branch
+        run: |
+          SUFFIX="${{ github.event.inputs.branch_suffix }}"
+          if [ -z "$SUFFIX" ]; then
+            SUFFIX=$(date -u +"%Y%m%d-%H%M%S")
+          fi
+          BRANCH="copilot/agent-demo-${SUFFIX}"
+          echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Create new branch
+        run: |
+          git checkout -b "${{ steps.branch.outputs.name }}"
+
+      - name: Generate / update sample file
+        run: |
+          TRIGGERED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          mkdir -p docs
+          cat > docs/agent-test.md << EOF
+# Copilot Agent 自动提交测试
+
+此文件由 GitHub Actions 工作流 \`copilot-agent-demo.yml\` 自动生成。
+
+| 字段 | 值 |
+|------|-----|
+| 工作流运行 ID | ${{ github.run_id }} |
+| 触发时间（UTC） | ${TRIGGERED_AT} |
+| 触发者 | ${{ github.actor }} |
+| 分支 | ${{ steps.branch.outputs.name }} |
+
+## 说明
+
+这是验证 Copilot coding agent 自动提交→自动开 PR 落地通道的示例文件。
+每次手动触发工作流时，文件内容将被更新，产生新的提交，并自动向 \`main\` 分支发起 Pull Request。
+EOF
+
+      - name: Commit and push
+        run: |
+          git add docs/agent-test.md
+          git commit -m "chore: Copilot agent 自动提交示例 (run ${{ github.run_id }})"
+          git push origin "${{ steps.branch.outputs.name }}"
+
+      - name: Create Pull Request via gh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_TITLE="${{ github.event.inputs.pr_title }}"
+          PR_BODY="## 自动创建的 Pull Request
+
+          此 PR 由 GitHub Actions 工作流 \`copilot-agent-demo.yml\` 自动创建，演示 Copilot coding agent 的自动提交与 PR 创建流程。
+
+          - **工作流运行**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - **触发者**: @${{ github.actor }}
+          - **源分支**: \`${{ steps.branch.outputs.name }}\`
+          - **目标分支**: \`main\`
+
+          ### 变更内容
+
+          更新了 \`docs/agent-test.md\` 示例文件。
+
+          ---
+          > 🤖 由 GitHub Actions 自动创建"
+
+          gh pr create \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --base main \
+            --head "${{ steps.branch.outputs.name }}"
