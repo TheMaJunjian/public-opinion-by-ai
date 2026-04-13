@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>公论 — 非线性公共讨论平台</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- =====================================================================
+       Top bar
+  ====================================================================== -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="logo">公论</span>
+      <span class="tagline">非线性公共讨论平台</span>
+    </div>
+    <div class="topbar-right" id="user-bar">
+      <span class="pts-label">贡献点：</span>
+      <span class="pts-value" id="user-points">—</span>
+      <span class="level-badge" id="user-level">Lv 1</span>
+      <select id="user-select" title="切换用户"></select>
+      <button class="btn-sm" id="btn-new-user">+ 新用户</button>
+    </div>
+  </header>
+
+  <!-- =====================================================================
+       Main layout: left sidebar + graph canvas + right panel
+  ====================================================================== -->
+  <div class="layout">
+
+    <!-- LEFT: action sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <section class="card" id="section-compose">
+        <h3>✏️ 发送消息</h3>
+
+        <label>类型</label>
+        <select id="msg-type">
+          <option value="message">普通消息</option>
+          <option value="question">提问</option>
+          <option value="relation">关系节点</option>
+          <option value="summary">摘要</option>
+        </select>
+
+        <div id="relation-type-row" class="hidden">
+          <label>关系类型</label>
+          <select id="relation-type">
+            <option value="agrees">赞同</option>
+            <option value="disagrees">反对</option>
+            <option value="elaborates">补充</option>
+            <option value="contradicts">矛盾</option>
+            <option value="summarizes">归纳</option>
+          </select>
+        </div>
+
+        <label>内容</label>
+        <textarea id="msg-content" rows="4" placeholder="输入消息内容…"></textarea>
+
+        <label>标签 <small>（逗号分隔）</small></label>
+        <input id="msg-tags" type="text" placeholder="例: 提案, 讨论" />
+
+        <label>引用消息 <small>（可选，支持多选）</small></label>
+        <div id="reference-list" class="ref-list"></div>
+        <small class="hint">在图中点击节点可快速添加引用</small>
+
+        <button class="btn-primary" id="btn-send">发送</button>
+      </section>
+
+      <section class="card" id="section-wager">
+        <h3>🎲 发起预测</h3>
+        <label>预测消息 ID</label>
+        <input id="wager-msg-id" type="text" placeholder="从图中点击节点获取 ID" />
+        <label>我的预测</label>
+        <select id="wager-prediction">
+          <option value="true">✅ 此观点将被验证为真</option>
+          <option value="false">❌ 此观点将被证伪</option>
+        </select>
+        <label>押注贡献点</label>
+        <input id="wager-amount" type="number" min="1" value="10" />
+        <button class="btn-primary" id="btn-place-wager">押注</button>
+      </section>
+    </aside>
+
+    <!-- CENTER: graph canvas -->
+    <main class="graph-area" id="graph-area">
+      <div class="graph-toolbar">
+        <button class="btn-sm" id="btn-refresh-graph">🔄 刷新图</button>
+        <button class="btn-sm" id="btn-ai-cluster">🤖 AI 聚类</button>
+        <span class="graph-legend">
+          <span class="legend-item"><span class="dot dot-message"></span>消息</span>
+          <span class="legend-item"><span class="dot dot-question"></span>提问</span>
+          <span class="legend-item"><span class="dot dot-relation"></span>关系</span>
+          <span class="legend-item"><span class="dot dot-summary"></span>摘要</span>
+        </span>
+      </div>
+      <svg id="graph-svg"></svg>
+    </main>
+
+    <!-- RIGHT: detail panel -->
+    <aside class="detail-panel" id="detail-panel">
+      <div id="detail-empty" class="detail-empty">
+        <p>← 点击图中节点查看详情</p>
+      </div>
+
+      <div id="detail-content" class="hidden">
+        <div class="detail-header">
+          <span class="detail-type-badge" id="detail-type-badge">消息</span>
+          <button class="btn-sm close-btn" id="btn-close-detail">✕</button>
+        </div>
+        <p class="detail-content-text" id="detail-content-text"></p>
+        <div class="detail-meta">
+          <span>作者：<strong id="detail-author"></strong></span>
+          <span>时间：<small id="detail-time"></small></span>
+        </div>
+        <div class="detail-tags" id="detail-tags"></div>
+
+        <!-- Position bar -->
+        <div class="position-bar">
+          <button class="pos-btn support" id="btn-support" title="支持">
+            👍 <span id="count-support">0</span>
+          </button>
+          <button class="pos-btn oppose"  id="btn-oppose"  title="反对">
+            👎 <span id="count-oppose">0</span>
+          </button>
+          <button class="pos-btn signup"  id="btn-signup"  title="报名参与">
+            ✋ <span id="count-signup">0</span>
+          </button>
+        </div>
+
+        <div class="detail-refs" id="detail-refs"></div>
+
+        <!-- AI summary -->
+        <div class="ai-summary-section">
+          <button class="btn-sm" id="btn-ai-summarize">🤖 AI 摘要本线程</button>
+          <div id="ai-summary-text" class="ai-summary-text hidden"></div>
+        </div>
+
+        <!-- Edit -->
+        <details class="edit-section">
+          <summary>✏️ 编辑消息</summary>
+          <textarea id="edit-content" rows="3"></textarea>
+          <button class="btn-sm" id="btn-edit-save">保存修改</button>
+          <div class="edit-history" id="edit-history"></div>
+        </details>
+
+        <!-- Wagers on this message -->
+        <div class="wager-section">
+          <h4>🎲 相关预测</h4>
+          <div id="wager-list"></div>
+          <button class="btn-sm" id="btn-use-for-wager">用此消息发起预测</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- =====================================================================
+       Toast notifications
+  ====================================================================== -->
+  <div id="toast-container"></div>
+
+  <!-- =====================================================================
+       Scripts — D3 loaded from CDN
+  ====================================================================== -->
+  <script src="vendor/d3.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/graph.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
