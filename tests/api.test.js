@@ -287,9 +287,8 @@ describe('Wagers', () => {
       .post(`/api/wagers/${w.body.id}/resolve`)
       .send({ outcome: true });
 
-    // Creator predicted true (correct) → should win opponent's 20 pts
+    // Creator predicted true (correct) → should receive their stake back plus winnings
     const creatorAfter = await request(app).get(`/api/users/${creatorId}`);
-    // Creator had 100 pts initially, earned points for posting (3), lost 20 for wager, won 40 back
     expect(creatorAfter.body.points).toBeGreaterThan(100);
   });
 });

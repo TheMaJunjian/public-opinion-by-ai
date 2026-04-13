@@ -13,6 +13,16 @@ const { v4: uuidv4 } = require('uuid');
  */
 
 // --------------------------------------------------------------------------
+// Point reward constants
+// --------------------------------------------------------------------------
+const POINTS_FOR = {
+  message:  3,
+  question: 3,
+  relation: 5,
+  summary:  10,
+};
+
+// --------------------------------------------------------------------------
 // Data containers
 // --------------------------------------------------------------------------
 const store = {
@@ -117,7 +127,7 @@ function createMessage({ authorId, content, references = [], type = 'message', r
   store.messages.set(message.id, message);
 
   // Award the author contribution points for posting
-  const basePoints = type === 'summary' ? 10 : type === 'relation' ? 5 : 3;
+  const basePoints = POINTS_FOR[type] ?? POINTS_FOR.message;
   updatePoints(authorId, basePoints);
   message.pointsEarned += basePoints;
 
@@ -323,7 +333,10 @@ function resolveWager({ wagerId, outcome }) {
   const winnerPool = winners.reduce((s, p) => s + p.amount, 0);
 
   for (const w of winners) {
-    // Return stake + proportional share of loser pool
+    // Return stake + proportional share of loser pool.
+    // Note: integer division via Math.floor may leave a small remainder in the
+    // pool when amounts don't divide evenly — this is by design to avoid
+    // creating points from nothing.
     const share = winnerPool > 0 ? Math.floor((w.amount / winnerPool) * loserPool) : 0;
     updatePoints(w.userId, w.amount + share);
   }

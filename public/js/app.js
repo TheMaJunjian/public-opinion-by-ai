@@ -412,11 +412,6 @@ async function init() {
     // If modifier key held, add to references instead of showing detail
   });
 
-  // Allow ctrl+click on node to add reference
-  document.getElementById('graph-svg').addEventListener('click', e => {
-    // handled in graph.js click handler
-  });
-
   try {
     await loadUsers();
     await refreshGraph();

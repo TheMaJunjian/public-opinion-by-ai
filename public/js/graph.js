@@ -12,7 +12,13 @@
  *   .onNodeClick(fn)       — register click handler fn(node)
  */
 
-const NODE_RADIUS = 22;
+const GRAPH_CONFIG = {
+  nodeRadius:   22,
+  linkDistance: 140,
+  chargeStrength: -400,
+  collideRadius: 32,   // nodeRadius + 10
+};
+
 const NODE_COLORS = {
   message:  '#6c8cff',
   question: '#fbbf24',
@@ -53,7 +59,7 @@ function initGraph(containerSelector) {
     defs.append('marker')
       .attr('id',          `arrow-${t}`)
       .attr('viewBox',     '0 -5 10 10')
-      .attr('refX',        NODE_RADIUS + 10)
+      .attr('refX',        GRAPH_CONFIG.nodeRadius + 10)
       .attr('refY',        0)
       .attr('markerWidth', 6)
       .attr('markerHeight', 6)
@@ -69,10 +75,10 @@ function initGraph(containerSelector) {
 
   // Simulation
   const simulation = d3.forceSimulation()
-    .force('link',   d3.forceLink().id(d => d.id).distance(140))
-    .force('charge', d3.forceManyBody().strength(-400))
+    .force('link',   d3.forceLink().id(d => d.id).distance(GRAPH_CONFIG.linkDistance))
+    .force('charge', d3.forceManyBody().strength(GRAPH_CONFIG.chargeStrength))
     .force('center', d3.forceCenter(width / 2, height / 2))
-    .force('collide', d3.forceCollide(NODE_RADIUS + 10));
+    .force('collide', d3.forceCollide(GRAPH_CONFIG.collideRadius));
 
   let clickHandler = () => {};
   let currentNodes = [];
@@ -151,7 +157,7 @@ function initGraph(containerSelector) {
       });
 
     nodeEnter.append('circle')
-      .attr('r', NODE_RADIUS)
+      .attr('r', GRAPH_CONFIG.nodeRadius)
       .attr('fill', d => NODE_COLORS[d.type] || NODE_COLORS.message)
       .attr('fill-opacity', 0.85)
       .attr('stroke', '#fff')
